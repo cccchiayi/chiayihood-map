@@ -310,11 +310,13 @@ async function init() {
   fitMap();
   setupPan();
 
-  // 如果有即時解鎖，顯示動畫
+  // 如果有即時解鎖，存入本地並顯示動畫
   if (justUnlocked && !unlocked.includes(justUnlocked)) {
     unlocked.push(justUnlocked);
-    applyUnlocked(justUnlocked, true);
+    localStorage.setItem('cy_unlocked', JSON.stringify(unlocked));
+    applyUnlocked(justUnlocked);
     updateProgress();
+    confetti();
     setTimeout(() => openStation(justUnlocked), 800);
   }
 
