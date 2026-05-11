@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>嘉義文化加一串 · 集章地圖</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --orange:#E8900A; --dark:#1C1C1C; --cream:#FFF8EE;
+  --A:#E05A5A; --B:#7B68EE; --C:#3AAA7A; --D:#E8900A;
+}
+html,body { height:100%; background:var(--dark); font-family:'Noto Sans TC',sans-serif; overflow:hidden; }
+
+/* ── TOP BAR ── */
+.topbar {
+  position:fixed; top:0; left:0; right:0; height:56px;
+  background:var(--dark); display:flex; align-items:center;
+  justify-content:space-between; padding:0 16px; z-index:50;
+  border-bottom:2px solid rgba(255,255,255,0.08);
+}
+.topbar-title { font-size:15px; font-weight:900; color:#fff; }
+.topbar-title span { color:var(--orange); }
+.progress-wrap { display:flex; align-items:center; gap:8px; }
+.progress-track { width:80px; height:6px; background:rgba(255,255,255,0.15); border-radius:3px; overflow:hidden; }
+.progress-fill { height:100%; background:var(--orange); border-radius:3px; transition:width 0.5s ease; width:0%; }
+.progress-count { font-size:12px; font-weight:700; color:rgba(255,255,255,0.6); white-space:nowrap; }
+
+/* ── FILTER TABS ── */
+.filter-bar {
+  position:fixed; top:56px; left:0; right:0; height:44px;
+  background:var(--dark); display:flex; align-items:center;
+  gap:6px; padding:0 14px; z-index:50; overflow-x:auto; scrollbar-width:none;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+.filter-bar::-webkit-scrollbar { display:none; }
+.ftab {
+  flex-shrink:0; height:28px; padding:0 12px; border-radius:14px;
+  font-size:12px; font-weight:700; font-family:inherit;
+  border:1.5px solid rgba(255,255,255,0.18); background:transparent;
+  color:rgba(255,255,255,0.55); cursor:pointer; transition:all 0.2s; white-space:nowrap;
+}
+.ftab.active,.ftab:hover { color:#fff; border-color:transparent; }
+.ftab[data-cat="all"].active { background:rgba(255,255,255,0.15); }
+.ftab[data-cat="A"].active { background:var(--A); }
+.ftab[data-cat="B"].active { background:var(--B); }
+.ftab[data-cat="C"].active { background:var(--C); }
+.ftab[data-cat="D"].active { background:var(--D); }
+
+/* ── MAP ── */
+.map-area { position:fixed; top:100px; left:0; right:0; bottom:80px; overflow:hidden; touch-action:none; }
+.map-canvas { position:absolute; transform-origin:0 0; cursor:grab; user-select:none; }
+.map-canvas:active { cursor:grabbing; }
+.map-img { display:block; width:900px; pointer-events:none; }
+
+/* ── PINS ── */
+.pin { position:absolute; transform:translate(-50%,-100%); cursor:pointer; z-index:10; transition:transform 0.15s,filter 0.2s; }
+.pin:hover { transform:translate(-50%,-100%) scale(1.2); }
+.pin:active { transform:translate(-50%,-100%) scale(0.95); }
+.pin-body {
+  width:32px; height:32px; border-radius:50% 50% 50% 0; transform:rotate(-45deg);
+  border:2.5px solid var(--dark); display:flex; align-items:center; justify-content:center;
+  box-shadow:2px 2px 6px rgba(0,0,0,0.35); position:relative; transition:background 0.3s;
+}
+.pin-body::after { content:''; position:absolute; inset:3px; border-radius:50%; background:rgba(255,255,255,0.25); }
+.pin-icon { transform:rotate(45deg); font-size:13px; position:relative; z-index:1; }
+.pin[data-cat="A"] .pin-body { background:var(--A); }
+.pin[data-cat="B"] .pin-body { background:var(--B); }
+.pin[data-cat="C"] .pin-body { background:var(--C); }
+.pin[data-cat="D"] .pin-body { background:var(--D); }
+.pin.locked { filter:saturate(0) opacity(0.55); }
+.pin.locked .pin-body::before { content:'🔒'; position:absolute; font-size:9px; bottom:-3px; right:-3px; transform:rotate(45deg); z-index:2; }
+.pin.unlocked .pin-body { box-shadow:0 0 0 4px rgba(255,255,255,0.3),2px 2px 8px rgba(0,0,0,0.4); }
+.pin-label { position:absolute; top:36px; left:50%; transform:translateX(-50%); background:var(--dark); color:#fff; font-size:9px; font-weight:700; white-space:nowrap; padding:2px 5px; border-radius:4px; pointer-events:none; opacity:0; transition:opacity 0.2s; }
+.pin:hover .pin-label { opacity:1; }
+
+/* ── TRAY ── */
+.tray { position:fixed; bottom:0; left:0; right:0; height:80px; background:var(--dark); border-top:2px solid rgba(255,255,255,0.08); display:flex; align-items:center; z-index:50; overflow-x:auto; scrollbar-width:none; padding:0 12px; }
+.tray::-webkit-scrollbar { display:none; }
+.tray-section { display:flex; align-items:center; gap:4px; flex-shrink:0; padding:0 8px; border-right:1px solid rgba(255,255,255,0.08); }
+.tray-section:last-child { border-right:none; }
+.tray-section-label { font-size:9px; font-weight:700; color:rgba(255,255,255,0.3); writing-mode:vertical-rl; letter-spacing:1px; margin-right:2px; }
+.tray-chip { width:34px; height:34px; border-radius:8px; background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; font-size:16px; filter:grayscale(1) opacity(0.3); transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1); flex-shrink:0; }
+.tray-chip.collected { filter:none; border-color:transparent; transform:scale(1.08); }
+.tray-chip[data-cat="A"].collected { background:rgba(224,90,90,0.2); }
+.tray-chip[data-cat="B"].collected { background:rgba(123,104,238,0.2); }
+.tray-chip[data-cat="C"].collected { background:rgba(58,170,122,0.2); }
+.tray-chip[data-cat="D"].collected { background:rgba(232,144,10,0.2); }
+
+/* ── MODAL ── */
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:200; align-items:flex-end; justify-content:center; }
+.overlay.active { display:flex; }
+.modal { background:var(--cream); border-radius:24px 24px 0 0; width:100%; max-width:480px; padding:20px 20px 36px; animation:slideUp 0.32s cubic-bezier(0.34,1.4,0.64,1); max-height:85vh; overflow-y:auto; }
+@keyframes slideUp { from{transform:translateY(110%)} to{transform:translateY(0)} }
+.modal-handle { width:36px; height:4px; background:rgba(0,0,0,0.15); border-radius:2px; margin:0 auto 16px; }
+.cat-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:10px; font-weight:700; color:#fff; margin-bottom:6px; }
+.modal-name { font-size:22px; font-weight:900; color:var(--dark); margin-bottom:2px; }
+.modal-addr { font-size:12px; color:#888; margin-bottom:14px; }
+.item-card { border-radius:16px; border:2px solid var(--dark); padding:14px; display:flex; align-items:center; gap:12px; margin-bottom:14px; background:#fff; }
+.item-big { font-size:40px; line-height:1; transition:filter 0.4s; }
+.item-card.locked .item-big { filter:grayscale(1) opacity(0.35); }
+.item-meta h3 { font-size:15px; font-weight:900; color:var(--dark); }
+.item-meta p { font-size:11px; color:#888; margin-top:2px; }
+.item-lock { margin-left:auto; font-size:20px; }
+.q-label { font-size:10px; font-weight:700; color:#aaa; letter-spacing:1px; margin-bottom:6px; }
+.q-text { font-size:14px; font-weight:700; color:var(--dark); line-height:1.6; background:rgba(0,0,0,0.04); border-radius:12px; padding:12px 14px; margin-bottom:12px; white-space:pre-line; }
+.ans-row { display:flex; gap:8px; margin-bottom:8px; }
+.ans-input { flex:1; border:2px solid var(--dark); border-radius:12px; padding:10px 14px; font-size:15px; font-weight:700; font-family:inherit; background:#fff; outline:none; transition:border-color 0.2s,box-shadow 0.2s; }
+.ans-input:focus { border-color:var(--C); box-shadow:0 0 0 3px rgba(58,170,122,0.2); }
+.ans-input.wrong { border-color:var(--A); animation:shake 0.35s ease; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+.submit-btn { background:var(--dark); color:#fff; border:none; border-radius:12px; padding:10px 16px; font-size:13px; font-weight:900; font-family:inherit; cursor:pointer; transition:opacity 0.15s,transform 0.15s; white-space:nowrap; }
+.submit-btn:active { transform:scale(0.95); }
+.feedback { font-size:12px; font-weight:700; min-height:18px; padding:0 2px; }
+.feedback.err { color:var(--A); }
+.feedback.hint { color:#888; }
+.success-view { display:none; flex-direction:column; align-items:center; text-align:center; padding:8px 0 4px; gap:6px; }
+.success-view.show { display:flex; }
+.success-emoji { font-size:64px; animation:pop 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes pop { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
+.success-view h2 { font-size:20px; font-weight:900; color:var(--dark); }
+.success-view p { font-size:12px; color:#888; }
+.done-btn { margin-top:10px; background:var(--dark); color:#fff; border:none; border-radius:14px; padding:12px 32px; font-size:14px; font-weight:900; font-family:inherit; cursor:pointer; }
+.done-view { display:none; flex-direction:column; align-items:center; text-align:center; gap:6px; padding:8px 0; }
+.done-view.show { display:flex; }
+.done-view .big { font-size:48px; }
+.done-view h2 { font-size:18px; font-weight:900; color:var(--dark); }
+.done-view p { font-size:12px; color:#888; }
+
+/* zoom */
+.zoom-hint { position:fixed; bottom:90px; right:14px; display:flex; flex-direction:column; gap:4px; z-index:60; }
+.zoom-btn { width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,0.12); border:1.5px solid rgba(255,255,255,0.15); color:#fff; font-size:18px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-family:inherit; }
+
+/* loading */
+.loading-screen { position:fixed; inset:0; background:var(--dark); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:999; gap:16px; transition:opacity 0.5s; }
+.loading-screen.hide { opacity:0; pointer-events:none; }
+.loading-title { font-size:20px; font-weight:900; color:#fff; }
+.loading-title span { color:var(--orange); }
+.loading-sub { font-size:13px; color:rgba(255,255,255,0.4); }
+.spinner { width:40px; height:40px; border:3px solid rgba(255,255,255,0.1); border-top-color:var(--orange); border-radius:50%; animation:spin 0.8s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* confetti */
+.conf { position:fixed; width:8px; height:8px; border-radius:2px; z-index:999; pointer-events:none; animation:confFall 1s ease-in forwards; }
+@keyframes confFall { 0%{transform:translateY(-10px) rotate(0deg);opacity:1} 100%{transform:translateY(100vh) rotate(540deg);opacity:0} }
+</style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="spinner"></div>
+  <div class="loading-title">嘉義文化<span>加一串</span></div>
+  <div class="loading-sub" id="loadingMsg">載入中…</div>
+</div>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-title">嘉義文化<span>加一串</span></div>
+  <div class="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
+    <div class="progress-count" id="progCount">0/27</div>
+  </div>
+</div>
+
+<!-- Filter tabs -->
+<div class="filter-bar">
+  <button class="ftab active" data-cat="all" onclick="filterCat('all')">全部</button>
+  <button class="ftab" data-cat="A" onclick="filterCat('A')">🔴 工藝串</button>
+  <button class="ftab" data-cat="B" onclick="filterCat('B')">🟣 展演串</button>
+  <button class="ftab" data-cat="C" onclick="filterCat('C')">🟢 行動串</button>
+  <button class="ftab" data-cat="D" onclick="filterCat('D')">🟠 社造串</button>
+</div>
+
+<!-- Map -->
+<div class="map-area" id="mapArea">
+  <div class="map-canvas" id="mapCanvas">
+    <img class="map-img" id="mapImg" src="map.jpg" alt="嘉義文化加一串地圖">
+  </div>
+</div>
+
+<!-- Zoom -->
+<div class="zoom-hint">
+  <button class="zoom-btn" onclick="zoom(1.2)">＋</button>
+  <button class="zoom-btn" onclick="zoom(0.83)">－</button>
+</div>
+
+<!-- Tray -->
+<div class="tray" id="tray"></div>
+
+<!-- Modal -->
+<div class="overlay" id="overlay" onclick="handleBg(event)">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <div id="qView">
+      <div class="cat-badge" id="mBadge"></div>
+      <div class="modal-name" id="mName"></div>
+      <div class="modal-addr" id="mAddr"></div>
+      <div class="item-card locked" id="mItemCard">
+        <div class="item-big" id="mEmoji"></div>
+        <div class="item-meta"><h3 id="mItemName"></h3><p id="mItemDesc">解開謎題即可獲得</p></div>
+        <div class="item-lock" id="mLock">🔒</div>
+      </div>
+      <div class="q-label">✦ 到現場才能解開的謎題</div>
+      <div class="q-text" id="mQuestion"></div>
+      <div class="ans-row">
+        <input class="ans-input" id="ansInput" type="text" placeholder="輸入答案…" autocomplete="off" onkeydown="if(event.key==='Enter')checkAns()">
+        <button class="submit-btn" onclick="checkAns()">送出</button>
+      </div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+    <div class="success-view" id="successView">
+      <div class="success-emoji" id="sEmoji"></div>
+      <h2>道具解鎖！🎉</h2>
+      <p id="sItemName"></p>
+      <p style="color:#aaa;font-size:11px;">已加入你的道具欄</p>
+      <button class="done-btn" onclick="closeModal()">收下道具！</button>
+    </div>
+    <div class="done-view" id="doneView">
+      <div class="big">✅</div>
+      <h2>已解鎖</h2>
+      <p id="doneItemName"></p><br>
+      <button class="done-btn" onclick="closeModal()">關閉</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// 設定
+// ═══════════════════════════════════════
+const API_BASE = 'https://chiayihood-backend-production.up.railway.app';
+
+// ═══════════════════════════════════════
+// 站點資料
+// ═══════════════════════════════════════
+const STATIONS = [
+  { id:'A1', cat:'A', name:'龍鳳祥交趾陶藝社', addr:'林森東路319巷6號', emoji:'🏺', item:'交趾陶小福神', q:'店內最古老的交趾陶作品是哪個神明？', ans:'福神', x:20, y:26 },
+  { id:'A2', cat:'A', name:'台灣花磚博物館', addr:'林西路282號', emoji:'🧱', item:'百年花磚拓印', q:'博物館內最大面花磚牆共有幾片花磚？', ans:'請現場數數看', x:18, y:34 },
+  { id:'A3', cat:'A', name:'祥太文化館', addr:'大雅路二段285巷30號', emoji:'🎎', item:'祥太文化徽章', q:'祥太文化館的招牌材質是什麼？', ans:'木頭', x:52, y:72 },
+  { id:'A4', cat:'A', name:'鑿花匠木雕藝術工作室', addr:'民生南路19巷13號', emoji:'🪵', item:'木雕鑿花片', q:'工作室師傅使用最多的木材種類是？', ans:'檜木', x:22, y:46 },
+  { id:'A5', cat:'A', name:'昭和11咖啡館', addr:'廣寧街101號', emoji:'☕', item:'昭和時代咖啡券', q:'咖啡館建築建於哪個年代？', ans:'昭和', x:30, y:52 },
+  { id:'A6', cat:'A', name:'福樟良材木創工坊', addr:'嶺新路134巷37號', emoji:'🌲', item:'樟木香氛片', q:'工坊使用的主要木材來自哪裡？', ans:'樟樹', x:58, y:38 },
+  { id:'A7', cat:'A', name:'萬花工坊', addr:'國華街245號', emoji:'🌸', item:'手工花卉書籤', q:'萬花工坊位在哪個市場內？', ans:'公有市場', x:26, y:59 },
+  { id:'B1', cat:'B', name:'新嘉義座', addr:'中山路616號K棟2樓', emoji:'🎭', item:'新嘉義座入場券', q:'新嘉義座的前身是什麼？', ans:'戲院', x:44, y:20 },
+  { id:'B2', cat:'B', name:'嘉領重奏團', addr:'中興路318號3樓', emoji:'🎻', item:'嘉領音符吊飾', q:'嘉領重奏團最常演奏哪類型音樂？', ans:'室內樂', x:52, y:30 },
+  { id:'B3', cat:'B', name:'昭和十八18', addr:'公園街42號', emoji:'🎪', item:'昭和十八紀念票根', q:'昭和十八的空間前身是做什麼用途？', ans:'宿舍', x:55, y:22 },
+  { id:'B4', cat:'B', name:'嘉義市北社尾王姓宗祠', addr:'北社尾路210號', emoji:'🏛️', item:'宗祠香火袋', q:'王姓宗祠建立至今大約幾年？', ans:'百年', x:34, y:14 },
+  { id:'B5', cat:'B', name:'木更', addr:'成仁街189號', emoji:'🪑', item:'木更手工家具徽章', q:'木更工作室最常使用的榫接技法叫什麼？', ans:'榫卯', x:60, y:55 },
+  { id:'C1', cat:'C', name:'蓄監更生島', addr:'嶺新路134巷36號', emoji:'🌱', item:'更生島種子包', q:'蓄監更生島的核心理念是什麼？', ans:'永續', x:57, y:42 },
+  { id:'C2', cat:'C', name:'台灣圖書室', addr:'中山路255號', emoji:'📖', item:'台灣圖書室書票', q:'圖書室內收藏最多哪類主題的書？', ans:'台灣', x:52, y:46 },
+  { id:'C3', cat:'C', name:'籌羅設計塾', addr:'東區中街200-1號', emoji:'✏️', item:'設計塾手繪貼紙', q:'籌羅設計塾的招牌顏色是？', ans:'黃色', x:55, y:50 },
+  { id:'C4', cat:'C', name:'小小逐月坊', addr:'國華街181巷14號', emoji:'🌙', item:'逐月坊月亮卡', q:'小小逐月坊主要販賣什麼？', ans:'手作', x:40, y:55 },
+  { id:'C5', cat:'C', name:'二通永昌街角館', addr:'正路382號', emoji:'🏠', item:'二通街角明信片', q:'永昌街角館位於哪個街區交叉口？', ans:'二通', x:50, y:57 },
+  { id:'C6', cat:'C', name:'KAGI共創基地', addr:'中山路616號', emoji:'🔧', item:'KAGI共創識別章', q:'KAGI的中文意思是什麼？', ans:'鑰匙', x:72, y:46 },
+  { id:'C7', cat:'C', name:'口袋派對會所', addr:'朝陽街55號', emoji:'🎉', item:'口袋派對邀請卡', q:'口袋派對最常舉辦哪種活動？', ans:'派對', x:68, y:52 },
+  { id:'C8', cat:'C', name:'HERMIT & Co.', addr:'成仁街209號', emoji:'🦔', item:'HERMIT隱士徽章', q:'HERMIT & Co.的吉祥物是哪種動物？', ans:'刺蝟', x:66, y:58 },
+  { id:'C9', cat:'C', name:'愛木村地方文化館', addr:'文化路909-3號', emoji:'🌳', item:'愛木村木片書籤', q:'愛木村地方文化館的主題是什麼？', ans:'木材', x:78, y:64 },
+  { id:'D1', cat:'D', name:'島呼冊店', addr:'中山路257號', emoji:'📚', item:'島呼冊店書籤', q:'島呼冊店的「冊」是台語什麼意思？', ans:'書', x:74, y:44 },
+  { id:'D2', cat:'D', name:'洪雅書房', addr:'教東路110號', emoji:'📗', item:'洪雅書房藏書票', q:'洪雅書房的老闆叫什麼名字？', ans:'余國信', x:76, y:50 },
+  { id:'D3', cat:'D', name:'Kagikaki水文創冰店', addr:'重慶路324號1樓', emoji:'🍧', item:'Kagikaki冰品兌換券', q:'Kagikaki最招牌的冰品口味是？', ans:'現場才知道', x:72, y:58 },
+  { id:'D4', cat:'D', name:'活泉人文館', addr:'忠義街101號', emoji:'💧', item:'活泉人文書籤', q:'活泉人文館的空間前身是什麼？', ans:'教堂', x:68, y:64 },
+  { id:'D5', cat:'D', name:'雨怪村', addr:'林森東路269巷1弄135號', emoji:'☔', item:'雨怪村平安符', q:'雨怪村的吉祥物造型靈感來自哪裡？', ans:'雨怪', x:62, y:34 },
+  { id:'D6', cat:'D', name:'杏福檐樂屋', addr:'國華街351巷20號', emoji:'🏡', item:'杏福檐樂屋鑰匙吊飾', q:'杏福檐樂屋主要提供什麼服務？', ans:'社區', x:30, y:68 },
+];
+
+// ═══════════════════════════════════════
+// 狀態
+// ═══════════════════════════════════════
+let unlocked = [];
+let currentId = null;
+let attempts = 0;
+let currentCat = 'all';
+let userId = null;
+let scale = 1, tx = 0, ty = 0;
+let dragging = false, startX, startY, startTx, startTy;
+
+// ═══════════════════════════════════════
+// 初始化：從網址取 userId，載入進度
+// ═══════════════════════════════════════
+async function init() {
+  // 從網址參數取 userId
+  const params = new URLSearchParams(window.location.search);
+  userId = params.get('userId');
+
+  // 檢查是否有即時解鎖（從 unlock-redirect 過來）
+  const justUnlocked = params.get('unlocked');
+
+  if (userId) {
+    document.getElementById('loadingMsg').textContent = '載入你的解鎖進度…';
+    try {
+      const res = await fetch(`${API_BASE}/progress/${encodeURIComponent(userId)}`);
+      const data = await res.json();
+      unlocked = data.unlocked || [];
+    } catch (e) {
+      console.error('載入進度失敗', e);
+      // 使用本地備份
+      unlocked = JSON.parse(localStorage.getItem('cy_unlocked') || '[]');
+    }
+  } else {
+    document.getElementById('loadingMsg').textContent = '從本地載入進度…';
+    unlocked = JSON.parse(localStorage.getItem('cy_unlocked') || '[]');
+  }
+
+  buildPins();
+  buildTray();
+  unlocked.forEach(id => applyUnlocked(id, false));
+  updateProgress();
+  fitMap();
+  setupPan();
+
+  // 如果有即時解鎖，顯示動畫
+  if (justUnlocked && !unlocked.includes(justUnlocked)) {
+    unlocked.push(justUnlocked);
+    applyUnlocked(justUnlocked, true);
+    updateProgress();
+    setTimeout(() => openStation(justUnlocked), 800);
+  }
+
+  // 隱藏 loading
+  setTimeout(() => {
+    document.getElementById('loadingScreen').classList.add('hide');
+    setTimeout(() => document.getElementById('loadingScreen').remove(), 600);
+  }, 500);
+}
+
+// ═══════════════════════════════════════
+// 建立 pins
+// ═══════════════════════════════════════
+function buildPins() {
+  const canvas = document.getElementById('mapCanvas');
+  STATIONS.forEach(s => {
+    const pin = document.createElement('div');
+    pin.className = 'pin locked';
+    pin.dataset.cat = s.cat;
+    pin.dataset.id = s.id;
+    pin.id = 'pin-' + s.id;
+    pin.style.left = s.x + '%';
+    pin.style.top  = s.y + '%';
+    pin.innerHTML = `<div class="pin-body"><span class="pin-icon">${s.emoji}</span></div><div class="pin-label">${s.id} ${s.name}</div>`;
+    pin.addEventListener('click', e => { e.stopPropagation(); if (!dragging) openStation(s.id); });
+    canvas.appendChild(pin);
+  });
+}
+
+// ═══════════════════════════════════════
+// 建立 tray
+// ═══════════════════════════════════════
+function buildTray() {
+  const tray = document.getElementById('tray');
+  const cats = ['A','B','C','D'];
+  const labels = { A:'工藝串', B:'展演串', C:'行動串', D:'社造串' };
+  cats.forEach(cat => {
+    const sec = document.createElement('div');
+    sec.className = 'tray-section';
+    const label = document.createElement('div');
+    label.className = 'tray-section-label';
+    label.textContent = labels[cat];
+    sec.appendChild(label);
+    STATIONS.filter(s => s.cat === cat).forEach(s => {
+      const chip = document.createElement('div');
+      chip.className = 'tray-chip';
+      chip.dataset.cat = cat;
+      chip.id = 'chip-' + s.id;
+      chip.textContent = s.emoji;
+      sec.appendChild(chip);
+    });
+    tray.appendChild(sec);
+  });
+}
+
+// ═══════════════════════════════════════
+// 解鎖
+// ═══════════════════════════════════════
+function applyUnlocked(id) {
+  const pin  = document.getElementById('pin-' + id);
+  const chip = document.getElementById('chip-' + id);
+  if (pin)  { pin.classList.remove('locked'); pin.classList.add('unlocked'); }
+  if (chip) chip.classList.add('collected');
+}
+
+function updateProgress() {
+  const n = unlocked.length;
+  const t = STATIONS.length;
+  document.getElementById('progFill').style.width = (n/t*100) + '%';
+  document.getElementById('progCount').textContent = n + '/' + t;
+}
+
+// ═══════════════════════════════════════
+// 篩選
+// ═══════════════════════════════════════
+function filterCat(cat) {
+  currentCat = cat;
+  document.querySelectorAll('.ftab').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+  document.querySelectorAll('.pin').forEach(pin => {
+    const show = cat === 'all' || pin.dataset.cat === cat;
+    pin.style.opacity = show ? '1' : '0.15';
+    pin.style.pointerEvents = show ? 'auto' : 'none';
+  });
+}
+
+// ═══════════════════════════════════════
+// Modal
+// ═══════════════════════════════════════
+function openStation(id) {
+  const s = STATIONS.find(x => x.id === id);
+  if (!s) return;
+  currentId = id;
+  attempts = 0;
+  const isUnlocked = unlocked.includes(id);
+
+  document.getElementById('qView').style.display = 'block';
+  document.getElementById('successView').classList.remove('show');
+  document.getElementById('doneView').classList.remove('show');
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('ansInput').value = '';
+  document.getElementById('ansInput').classList.remove('wrong');
+
+  const catNames = { A:'工藝串', B:'展演串', C:'行動串', D:'社造串' };
+  const catColors = { A:'var(--A)', B:'var(--B)', C:'var(--C)', D:'var(--D)' };
+  const badge = document.getElementById('mBadge');
+  badge.textContent = s.id + ' · ' + catNames[s.cat];
+  badge.style.background = catColors[s.cat];
+
+  document.getElementById('mName').textContent = s.name;
+  document.getElementById('mAddr').textContent = '📍 ' + s.addr;
+  document.getElementById('mEmoji').textContent = s.emoji;
+  document.getElementById('mItemName').textContent = s.item;
+  document.getElementById('mQuestion').textContent = s.q;
+  document.getElementById('sEmoji').textContent = s.emoji;
+  document.getElementById('sItemName').textContent = s.item;
+  document.getElementById('doneItemName').textContent = '「' + s.item + '」已在道具欄';
+
+  if (isUnlocked) {
+    document.getElementById('qView').style.display = 'none';
+    document.getElementById('mItemCard').classList.remove('locked');
+    document.getElementById('mLock').textContent = '✅';
+    document.getElementById('doneView').classList.add('show');
+  } else {
+    document.getElementById('mItemCard').classList.add('locked');
+    document.getElementById('mLock').textContent = '🔒';
+  }
+
+  document.getElementById('overlay').classList.add('active');
+  setTimeout(() => document.getElementById('ansInput').focus(), 350);
+}
+
+function checkAns() {
+  const s = STATIONS.find(x => x.id === currentId);
+  const input = document.getElementById('ansInput');
+  const fb = document.getElementById('feedback');
+  const val = input.value.trim();
+  if (!val) return;
+
+  const ok = val.includes(s.ans) || s.ans.includes(val);
+
+  if (ok) {
+    if (!unlocked.includes(currentId)) {
+      unlocked.push(currentId);
+      // 存本地備份
+      localStorage.setItem('cy_unlocked', JSON.stringify(unlocked));
+      applyUnlocked(currentId);
+      updateProgress();
+      confetti();
+    }
+    document.getElementById('qView').style.display = 'none';
+    document.getElementById('successView').classList.add('show');
+  } else {
+    attempts++;
+    input.classList.remove('wrong');
+    void input.offsetWidth;
+    input.classList.add('wrong');
+    input.value = '';
+    fb.textContent = attempts >= 2 ? '再想想！到現場仔細找找線索 🔍' : '答案不對，再試一次！';
+    fb.className = attempts >= 2 ? 'feedback hint' : 'feedback err';
+  }
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.remove('active');
+  currentId = null;
+}
+
+function handleBg(e) {
+  if (e.target === document.getElementById('overlay')) closeModal();
+}
+
+// ═══════════════════════════════════════
+// Pan & Zoom
+// ═══════════════════════════════════════
+function fitMap() {
+  const area = document.getElementById('mapArea');
+  scale = Math.min(area.offsetWidth / 900, area.offsetHeight / 540);
+  tx = (area.offsetWidth - 900 * scale) / 2;
+  ty = (area.offsetHeight - 540 * scale) / 2;
+  applyTransform();
+}
+
+function applyTransform() {
+  document.getElementById('mapCanvas').style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+}
+
+function zoom(f) {
+  const area = document.getElementById('mapArea');
+  const cx = area.offsetWidth / 2, cy = area.offsetHeight / 2;
+  tx = cx - (cx - tx) * f;
+  ty = cy - (cy - ty) * f;
+  scale = Math.min(3, Math.max(0.4, scale * f));
+  applyTransform();
+}
+
+function setupPan() {
+  const area = document.getElementById('mapArea');
+  area.addEventListener('mousedown', e => { dragging=true; startX=e.clientX; startY=e.clientY; startTx=tx; startTy=ty; });
+  window.addEventListener('mousemove', e => { if(!dragging) return; tx=startTx+e.clientX-startX; ty=startTy+e.clientY-startY; applyTransform(); });
+  window.addEventListener('mouseup', () => { setTimeout(()=>dragging=false,50); });
+  area.addEventListener('touchstart', e => { if(e.touches.length===1){dragging=true;startX=e.touches[0].clientX;startY=e.touches[0].clientY;startTx=tx;startTy=ty;} }, {passive:true});
+  area.addEventListener('touchmove', e => { if(!dragging||e.touches.length!==1) return; tx=startTx+e.touches[0].clientX-startX; ty=startTy+e.touches[0].clientY-startY; applyTransform(); }, {passive:true});
+  area.addEventListener('touchend', () => { setTimeout(()=>dragging=false,50); });
+  area.addEventListener('wheel', e => { e.preventDefault(); const d=e.deltaY>0?0.9:1.1; const rect=area.getBoundingClientRect(); tx=(e.clientX-rect.left)-(e.clientX-rect.left-tx)*d; ty=(e.clientY-rect.top)-(e.clientY-rect.top-ty)*d; scale=Math.min(3,Math.max(0.4,scale*d)); applyTransform(); }, {passive:false});
+}
+
+function confetti() {
+  const colors=['#E05A5A','#7B68EE','#3AAA7A','#E8900A','#FFE000','#fff'];
+  for(let i=0;i<35;i++){
+    const el=document.createElement('div');
+    el.className='conf';
+    el.style.cssText=`left:${Math.random()*100}vw;top:-8px;background:${colors[Math.floor(Math.random()*colors.length)]};animation-delay:${Math.random()*0.5}s;animation-duration:${0.8+Math.random()*0.7}s;border-radius:${Math.random()>.5?'50%':'2px'};`;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),1600);
+  }
+}
+
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
