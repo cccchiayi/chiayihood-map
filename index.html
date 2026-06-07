@@ -103,6 +103,8 @@ html,body { height:100%; background:var(--dark); font-family:'Noto Sans TC',sans
 .item-meta h3 { font-size:15px; font-weight:900; color:var(--dark); }
 .item-meta p { font-size:11px; color:#888; margin-top:2px; }
 .item-lock { margin-left:auto; font-size:20px; }
+.stamp-info { background:rgba(232,144,10,0.12); border:1.5px solid rgba(232,144,10,0.3); border-radius:12px; padding:10px 14px; margin-bottom:14px; display:flex; flex-direction:column; gap:4px; }
+.stamp-row { font-size:12px; font-weight:700; color:#7a4f00; line-height:1.5; }
 .q-label { font-size:10px; font-weight:700; color:#aaa; letter-spacing:1px; margin-bottom:6px; }
 .q-text { font-size:14px; font-weight:700; color:var(--dark); line-height:1.6; background:rgba(0,0,0,0.04); border-radius:12px; padding:12px 14px; margin-bottom:12px; white-space:pre-line; }
 .ans-row { display:flex; gap:8px; margin-bottom:8px; }
@@ -129,8 +131,9 @@ html,body { height:100%; background:var(--dark); font-family:'Noto Sans TC',sans
 .done-view p { font-size:12px; color:#888; }
 
 /* zoom */
-.zoom-hint { position:fixed; bottom:90px; right:14px; display:flex; flex-direction:column; gap:4px; z-index:60; }
-.zoom-btn { width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,0.12); border:1.5px solid rgba(255,255,255,0.15); color:#fff; font-size:18px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-family:inherit; }
+.zoom-hint { position:fixed; bottom:90px; right:14px; display:flex; flex-direction:column; gap:6px; z-index:60; }
+.zoom-btn { width:44px; height:44px; border-radius:12px; background:rgba(30,30,30,0.85); border:1.5px solid rgba(255,255,255,0.2); color:#fff; font-size:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-family:inherit; backdrop-filter:blur(8px); box-shadow:0 2px 8px rgba(0,0,0,0.3); transition:background 0.15s, transform 0.1s; }
+.zoom-btn:active { transform:scale(0.92); background:rgba(255,255,255,0.15); }
 
 /* loading */
 .loading-screen { position:fixed; inset:0; background:var(--dark); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:999; gap:16px; transition:opacity 0.5s; }
@@ -182,8 +185,9 @@ html,body { height:100%; background:var(--dark); font-family:'Noto Sans TC',sans
 
 <!-- Zoom -->
 <div class="zoom-hint">
-  <button class="zoom-btn" onclick="zoom(1.2)">＋</button>
-  <button class="zoom-btn" onclick="zoom(0.83)">－</button>
+  <button class="zoom-btn" onclick="zoom(1.3)" title="放大">＋</button>
+  <button class="zoom-btn" onclick="fitMap()" title="重置" style="font-size:14px;">⊙</button>
+  <button class="zoom-btn" onclick="zoom(0.77)" title="縮小">－</button>
 </div>
 
 <!-- Tray -->
@@ -197,6 +201,10 @@ html,body { height:100%; background:var(--dark); font-family:'Noto Sans TC',sans
       <div class="cat-badge" id="mBadge"></div>
       <div class="modal-name" id="mName"></div>
       <div class="modal-addr" id="mAddr"></div>
+      <div class="stamp-info" id="mStampInfo" style="display:none">
+        <div class="stamp-row" id="mStampAddr"></div>
+        <div class="stamp-row" id="mStampTime"></div>
+      </div>
       <div class="item-card locked" id="mItemCard">
         <div class="item-big" id="mEmoji"></div>
         <div class="item-meta"><h3 id="mItemName"></h3><p id="mItemDesc">解開謎題即可獲得</p></div>
@@ -237,36 +245,36 @@ const API_BASE = 'https://chiayihood-backend-production.up.railway.app';
 // ═══════════════════════════════════════
 const STATIONS = [
   // ── A 工藝串（紅色）──
-  { id:'A1', cat:'A', name:'龍鳳祥交趾陶藝社', addr:'林森東路319巷6號', emoji:'🏺', item:'交趾陶小福神', q:'店內最古老的交趾陶作品是哪個神明？', ans:'福神', x:68, y:38 },
-  { id:'A2', cat:'A', name:'臺灣花磚博物館', addr:'林西路282號', emoji:'🧱', item:'百年花磚拓印', q:'博物館內展示最多的花磚來自哪個年代？', ans:'日治', x:30, y:42 },
-  { id:'A3', cat:'A', name:'祥太文化館', addr:'大雅路二段285巷30號', emoji:'🎎', item:'祥太文化徽章', q:'祥太文化館的主要展示主題是什麼？', ans:'木雕', x:93, y:88 },
-  { id:'A4', cat:'A', name:'鑿花匠木雕藝術工作室', addr:'民生南路19巷13號', emoji:'🪵', item:'木雕鑿花片', q:'工作室師傅使用最多的木材種類是？', ans:'檜木', x:55, y:42 },
-  { id:'A5', cat:'A', name:'昭和11咖啡館', addr:'廣寧街101號', emoji:'☕', item:'昭和時代咖啡券', q:'咖啡館建築建於哪個年代？', ans:'昭和', x:22, y:60 },
-  { id:'A6', cat:'A', name:'福樟良材木創工坊', addr:'嶺新路134巷37號', emoji:'🌲', item:'樟木香氛片', q:'工坊使用的主要木材來自哪裡？', ans:'樟樹', x:72, y:28 },
-  { id:'A7', cat:'A', name:'萬花工坊', addr:'國華街245號', emoji:'🌸', item:'手工花卉書籤', q:'萬花工坊位在哪個市場內？', ans:'公有市場', x:47, y:53 },
+  { id:'A1', cat:'A', name:'龍鳳祥交趾陶藝社', addr:'林森東路319巷6號', emoji:'🏺', item:'交趾陶小福神', q:'店內最古老的交趾陶作品是哪個神明？', ans:'福神', stampAddr:'集點位置（九華山地藏庵昭忠祠）：嘉義市東區民權路255號', stampTime:'集點時間：每日 8:00–17:30', x:67.8, y:37.2 },
+  { id:'A2', cat:'A', name:'臺灣花磚博物館', addr:'林西路282號', emoji:'🧱', item:'百年花磚拓印', q:'博物館內展示最多的花磚來自哪個年代？', ans:'日治', x:28.9, y:41.3 },
+  { id:'A3', cat:'A', name:'祥太文化館', addr:'大雅路二段285巷30號', emoji:'🎎', item:'祥太文化徽章', q:'祥太文化館的主要展示主題是什麼？', ans:'木雕', x:92.5, y:87.9 },
+  { id:'A4', cat:'A', name:'鑿花匠木雕藝術工作室', addr:'民生南路19巷13號', emoji:'🪵', item:'木雕鑿花片', q:'工作室師傅使用最多的木材種類是？', ans:'檜木', x:53.2, y:41.9 },
+  { id:'A5', cat:'A', name:'昭和11咖啡館', addr:'廣寧街101號', emoji:'☕', item:'昭和時代咖啡券', q:'咖啡館建築建於哪個年代？', ans:'昭和', x:21.4, y:59.7 },
+  { id:'A6', cat:'A', name:'福樟良材木創工坊', addr:'嶺新路134巷37號', emoji:'🌲', item:'樟木香氛片', q:'工坊使用的主要木材來自哪裡？', ans:'樟樹', x:69.6, y:27.7 },
+  { id:'A7', cat:'A', name:'萬花工坊', addr:'國華街245號', emoji:'🌸', item:'手工花卉書籤', q:'萬花工坊位在哪個市場內？', ans:'公有市場', x:45.7, y:52.9 },
   // ── B 展演串（藍色）──
-  { id:'B1', cat:'B', name:'新嘉義座', addr:'中山路616號K棟2樓', emoji:'🎭', item:'新嘉義座入場券', q:'新嘉義座的前身是什麼？', ans:'戲院', x:18, y:58 },
-  { id:'B2', cat:'B', name:'嘉領重奏團', addr:'中興路318號3樓', emoji:'🎻', item:'嘉領音符吊飾', q:'嘉領重奏團最常演奏哪類型音樂？', ans:'室內樂', x:12, y:38 },
-  { id:'B3', cat:'B', name:'昭和十八J18', addr:'公園街42號', emoji:'🎪', item:'昭和十八紀念票根', q:'昭和十八的空間前身是做什麼用途？', ans:'宿舍', x:84, y:52 },
-  { id:'B4', cat:'B', name:'嘉義市北社尾王姓宗祠', addr:'北社尾路210號', emoji:'🏛️', item:'宗祠香火袋', q:'王姓宗祠建立至今大約幾年？', ans:'百年', x:58, y:28 },
-  { id:'B5', cat:'B', name:'木更', addr:'成仁街189號', emoji:'🪑', item:'木更手工家具徽章', q:'木更工作室最常使用的榫接技法叫什麼？', ans:'榫卯', x:52, y:48 },
+  { id:'B1', cat:'B', name:'新嘉義座', addr:'中山路616號K棟2樓', emoji:'🎭', item:'新嘉義座入場券', q:'新嘉義座的前身是什麼？', ans:'戲院', x:17.5, y:58.1 },
+  { id:'B2', cat:'B', name:'嘉領重奏團', addr:'中興路318號3樓', emoji:'🎻', item:'嘉領音符吊飾', q:'嘉領重奏團最常演奏哪類型音樂？', ans:'室內樂', stampAddr:'集點地址：嘉義市西區中興路318號3樓', stampTime:'集點時間：週一～週五 13:00–20:00', x:11.4, y:38.2 },
+  { id:'B3', cat:'B', name:'昭和十八J18', addr:'公園街42號', emoji:'🎪', item:'昭和十八紀念票根', q:'昭和十八的空間前身是做什麼用途？', ans:'宿舍', x:82.5, y:51.8 },
+  { id:'B4', cat:'B', name:'嘉義市北社尾王姓宗祠', addr:'北社尾路210號', emoji:'🏛️', item:'宗祠香火袋', q:'王姓宗祠建立至今大約幾年？', ans:'百年', x:56.4, y:27.7 },
+  { id:'B5', cat:'B', name:'木更', addr:'成仁街189號', emoji:'🪑', item:'木更手工家具徽章', q:'木更工作室最常使用的榫接技法叫什麼？', ans:'榫卯', x:50.3, y:48.1 },
   // ── C 行動串（黃綠色）──
-  { id:'C1', cat:'C', name:'蓄監更生島', addr:'嶺新路134巷36號', emoji:'🌱', item:'更生島種子包', q:'蓄監更生島的核心理念是什麼？', ans:'永續', x:72, y:22 },
-  { id:'C2', cat:'C', name:'台灣圖書室', addr:'中山路255號', emoji:'📖', item:'台灣圖書室書票', q:'圖書室內收藏最多哪類主題的書？', ans:'台灣', x:50, y:44 },
-  { id:'C3', cat:'C', name:'籌羅設計塾', addr:'東區中街200-1號', emoji:'✏️', item:'設計塾手繪貼紙', q:'籌羅設計塾的招牌顏色是？', ans:'黃色', x:52, y:36 },
-  { id:'C4', cat:'C', name:'小小逐月坊', addr:'國華街181巷14號', emoji:'🌙', item:'逐月坊月亮卡', q:'小小逐月坊主要販賣什麼？', ans:'手作', x:57, y:44 },
-  { id:'C5', cat:'C', name:'二通永昌街角館', addr:'正路382號', emoji:'🏠', item:'二通街角明信片', q:'永昌街角館位於哪個街區交叉口？', ans:'二通', x:48, y:52 },
-  { id:'C6', cat:'C', name:'KAGI共創基地', addr:'中山路616號', emoji:'🔧', item:'KAGI共創識別章', q:'KAGI的中文意思是什麼？', ans:'鑰匙', x:60, y:38 },
-  { id:'C7', cat:'C', name:'口袋派對會所', addr:'朝陽街55號', emoji:'🎉', item:'口袋派對邀請卡', q:'口袋派對最常舉辦哪種活動？', ans:'派對', x:82, y:72 },
-  { id:'C8', cat:'C', name:'HERMIT & Co.', addr:'成仁街209號', emoji:'🦔', item:'HERMIT隱士徽章', q:'HERMIT & Co.的吉祥物是哪種動物？', ans:'刺蝟', x:54, y:50 },
-  { id:'C9', cat:'C', name:'愛木村地方文化館', addr:'文化路909-3號', emoji:'🌳', item:'愛木村木片書籤', q:'愛木村地方文化館的主題是什麼？', ans:'木材', x:68, y:82 },
+  { id:'C1', cat:'C', name:'蓄監更生島', addr:'嶺新路134巷36號', emoji:'🌱', item:'更生島種子包', q:'蓄監更生島的核心理念是什麼？', ans:'永續', x:70.7, y:21.5 },
+  { id:'C2', cat:'C', name:'台灣圖書室', addr:'中山路255號', emoji:'📖', item:'台灣圖書室書票', q:'圖書室內收藏最多哪類主題的書？', ans:'台灣', x:48.6, y:44.0 },
+  { id:'C3', cat:'C', name:'籌羅設計塾', addr:'東區中街200-1號', emoji:'✏️', item:'設計塾手繪貼紙', q:'籌羅設計塾的招牌顏色是？', ans:'黃色', x:50.3, y:36.1 },
+  { id:'C4', cat:'C', name:'小小逐月坊', addr:'國華街181巷14號', emoji:'🌙', item:'逐月坊月亮卡', q:'小小逐月坊主要販賣什麼？', ans:'手作', x:55.3, y:44.5 },
+  { id:'C5', cat:'C', name:'二通永昌街角館', addr:'正路382號', emoji:'🏠', item:'二通街角明信片', q:'永昌街角館位於哪個街區交叉口？', ans:'二通', x:46.8, y:51.8 },
+  { id:'C6', cat:'C', name:'KAGI共創基地', addr:'中山路616號', emoji:'🔧', item:'KAGI共創識別章', q:'KAGI的中文意思是什麼？', ans:'鑰匙', x:58.6, y:38.2 },
+  { id:'C7', cat:'C', name:'口袋派對會所', addr:'朝陽街55號', emoji:'🎉', item:'口袋派對邀請卡', q:'口袋派對最常舉辦哪種活動？', ans:'派對', x:80.0, y:72.2 },
+  { id:'C8', cat:'C', name:'HERMIT & Co.', addr:'成仁街209號', emoji:'🦔', item:'HERMIT隱士徽章', q:'HERMIT & Co.的吉祥物是哪種動物？', ans:'刺蝟', x:52.5, y:49.7 },
+  { id:'C9', cat:'C', name:'愛木村地方文化館', addr:'文化路909-3號', emoji:'🌳', item:'愛木村木片書籤', q:'愛木村地方文化館的主題是什麼？', ans:'木材', x:66.4, y:82.2 },
   // ── D 社造串（粉紫色）──
-  { id:'D1', cat:'D', name:'島呼冊店', addr:'中山路257號', emoji:'📚', item:'島呼冊店書籤', q:'島呼冊店的「冊」是台語什麼意思？', ans:'書', x:50, y:46 },
-  { id:'D2', cat:'D', name:'洪雅書房', addr:'教東路110號', emoji:'📗', item:'洪雅書房藏書票', q:'洪雅書房的老闆叫什麼名字？', ans:'余國信', x:92, y:12 },
-  { id:'D3', cat:'D', name:'Kagikaki水文創冰店', addr:'重慶路324號1樓', emoji:'🍧', item:'Kagikaki冰品兌換券', q:'Kagikaki最招牌的冰品口味是？', ans:'現場才知道', x:8, y:82 },
-  { id:'D4', cat:'D', name:'活泉人文館', addr:'忠義街101號', emoji:'💧', item:'活泉人文書籤', q:'活泉人文館的空間前身是什麼？', ans:'教堂', x:38, y:56 },
-  { id:'D5', cat:'D', name:'雨怪村│嘉義市東區新店社區發展協會', addr:'林森東路269巷1弄135號', emoji:'☔', item:'雨怪村平安符', q:'雨怪村的吉祥物造型靈感來自哪裡？', ans:'雨怪', x:88, y:20 },
-  { id:'D6', cat:'D', name:'杏福檐樂屋', addr:'國華街351巷20號', emoji:'🏡', item:'杏福檐樂屋鑰匙吊飾', q:'杏福檐樂屋主要提供什麼服務？', ans:'社區', x:32, y:32 },
+  { id:'D1', cat:'D', name:'島呼冊店', addr:'中山路257號', emoji:'📚', item:'島呼冊店書籤', q:'島呼冊店的「冊」是台語什麼意思？', ans:'書', x:49.3, y:46.0 },
+  { id:'D2', cat:'D', name:'洪雅書房', addr:'教東路110號', emoji:'📗', item:'洪雅書房藏書票', q:'洪雅書房的老闆叫什麼名字？', ans:'余國信', x:91.4, y:12.0 },
+  { id:'D3', cat:'D', name:'Kagikaki水文創冰店', addr:'重慶路324號1樓', emoji:'🍧', item:'Kagikaki冰品兌換券', q:'Kagikaki最招牌的冰品口味是？', ans:'現場才知道', x:7.5, y:82.2 },
+  { id:'D4', cat:'D', name:'活泉人文館', addr:'忠義街101號', emoji:'💧', item:'活泉人文書籤', q:'活泉人文館的空間前身是什麼？', ans:'教堂', x:36.8, y:55.5 },
+  { id:'D5', cat:'D', name:'雨怪村│嘉義市東區新店社區發展協會', addr:'林森東路269巷1弄135號', emoji:'☔', item:'雨怪村平安符', q:'雨怪村的吉祥物造型靈感來自哪裡？', ans:'雨怪', x:86.0, y:19.9 },
+  { id:'D6', cat:'D', name:'杏福檐樂屋', addr:'國華街351巷20號', emoji:'🏡', item:'杏福檐樂屋鑰匙吊飾', q:'杏福檐樂屋主要提供什麼服務？', ans:'社區', x:31.1, y:31.9 },
 ];
 
 // ═══════════════════════════════════════
@@ -320,7 +328,6 @@ async function init() {
     localStorage.setItem('cy_unlocked', JSON.stringify(unlocked));
     applyUnlocked(justUnlocked);
     updateProgress();
-    confetti();
     setTimeout(() => openStation(justUnlocked), 800);
   }
 
@@ -431,6 +438,16 @@ function openStation(id) {
 
   document.getElementById('mName').textContent = s.name;
   document.getElementById('mAddr').textContent = '📍 ' + s.addr;
+
+  // 集點資訊
+  const stampInfo = document.getElementById('mStampInfo');
+  if (s.stampAddr || s.stampTime) {
+    document.getElementById('mStampAddr').textContent = '📌 ' + (s.stampAddr || '');
+    document.getElementById('mStampTime').textContent = '🕐 ' + (s.stampTime || '');
+    stampInfo.style.display = 'flex';
+  } else {
+    stampInfo.style.display = 'none';
+  }
   document.getElementById('mEmoji').textContent = s.emoji;
   document.getElementById('mItemName').textContent = s.item;
   document.getElementById('mQuestion').textContent = s.q;
@@ -468,7 +485,6 @@ function checkAns() {
       localStorage.setItem('cy_unlocked', JSON.stringify(unlocked));
       applyUnlocked(currentId);
       updateProgress();
-      confetti();
     }
     document.getElementById('qView').style.display = 'none';
     document.getElementById('successView').classList.add('show');
@@ -493,38 +509,158 @@ function handleBg(e) {
 }
 
 // ═══════════════════════════════════════
-// Pan & Zoom
+// Pan & Zoom（優化版）
 // ═══════════════════════════════════════
+const MIN_SCALE = 0.3;
+const MAX_SCALE = 4;
+const IMG_W = 900;
+const IMG_H = 614; // 900 * (3822/5602)
+
 function fitMap() {
   const area = document.getElementById('mapArea');
-  scale = Math.min(area.offsetWidth / 900, area.offsetHeight / 540);
-  tx = (area.offsetWidth - 900 * scale) / 2;
-  ty = (area.offsetHeight - 540 * scale) / 2;
+  const aw = area.offsetWidth;
+  const ah = area.offsetHeight;
+  scale = Math.min(aw / IMG_W, ah / IMG_H) * 0.95;
+  tx = (aw - IMG_W * scale) / 2;
+  ty = (ah - IMG_H * scale) / 2;
   applyTransform();
 }
 
+function clampTransform() {
+  const area = document.getElementById('mapArea');
+  const aw = area.offsetWidth;
+  const ah = area.offsetHeight;
+  const mapW = IMG_W * scale;
+  const mapH = IMG_H * scale;
+  // 讓地圖不能拖到完全離開畫面
+  const pad = 80;
+  tx = Math.min(aw - pad, Math.max(pad - mapW, tx));
+  ty = Math.min(ah - pad, Math.max(pad - mapH, ty));
+}
+
 function applyTransform() {
-  document.getElementById('mapCanvas').style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+  document.getElementById('mapCanvas').style.transform =
+    `translate(${tx}px,${ty}px) scale(${scale})`;
+}
+
+function zoomAt(cx, cy, factor) {
+  const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale * factor));
+  const ratio = newScale / scale;
+  tx = cx - (cx - tx) * ratio;
+  ty = cy - (cy - ty) * ratio;
+  scale = newScale;
+  clampTransform();
+  applyTransform();
 }
 
 function zoom(f) {
   const area = document.getElementById('mapArea');
-  const cx = area.offsetWidth / 2, cy = area.offsetHeight / 2;
-  tx = cx - (cx - tx) * f;
-  ty = cy - (cy - ty) * f;
-  scale = Math.min(3, Math.max(0.4, scale * f));
-  applyTransform();
+  zoomAt(area.offsetWidth / 2, area.offsetHeight / 2, f);
 }
 
 function setupPan() {
   const area = document.getElementById('mapArea');
-  area.addEventListener('mousedown', e => { dragging=true; startX=e.clientX; startY=e.clientY; startTx=tx; startTy=ty; });
-  window.addEventListener('mousemove', e => { if(!dragging) return; tx=startTx+e.clientX-startX; ty=startTy+e.clientY-startY; applyTransform(); });
-  window.addEventListener('mouseup', () => { setTimeout(()=>dragging=false,50); });
-  area.addEventListener('touchstart', e => { if(e.touches.length===1){dragging=true;startX=e.touches[0].clientX;startY=e.touches[0].clientY;startTx=tx;startTy=ty;} }, {passive:true});
-  area.addEventListener('touchmove', e => { if(!dragging||e.touches.length!==1) return; tx=startTx+e.touches[0].clientX-startX; ty=startTy+e.touches[0].clientY-startY; applyTransform(); }, {passive:true});
-  area.addEventListener('touchend', () => { setTimeout(()=>dragging=false,50); });
-  area.addEventListener('wheel', e => { e.preventDefault(); const d=e.deltaY>0?0.9:1.1; const rect=area.getBoundingClientRect(); tx=(e.clientX-rect.left)-(e.clientX-rect.left-tx)*d; ty=(e.clientY-rect.top)-(e.clientY-rect.top-ty)*d; scale=Math.min(3,Math.max(0.4,scale*d)); applyTransform(); }, {passive:false});
+  let lastDist = 0;
+  let pinching = false;
+  let lastMidX = 0, lastMidY = 0;
+  let moved = false;
+
+  // ── Mouse ──
+  area.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    dragging = true;
+    moved = false;
+    startX = e.clientX; startY = e.clientY;
+    startTx = tx; startTy = ty;
+    area.style.cursor = 'grabbing';
+  });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
+    tx = startTx + dx;
+    ty = startTy + dy;
+    clampTransform();
+    applyTransform();
+  });
+  window.addEventListener('mouseup', () => {
+    dragging = false;
+    area.style.cursor = 'grab';
+    setTimeout(() => { dragging = false; }, 50);
+  });
+
+  // ── Wheel zoom（電腦）──
+  area.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect = area.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const factor = e.deltaY < 0 ? 1.15 : 0.87;
+    zoomAt(cx, cy, factor);
+  }, { passive: false });
+
+  // ── Touch（手機）──
+  area.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+      pinching = false;
+      dragging = true;
+      moved = false;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      startTx = tx; startTy = ty;
+    } else if (e.touches.length === 2) {
+      pinching = true;
+      dragging = false;
+      const t1 = e.touches[0], t2 = e.touches[1];
+      lastDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      lastMidX = (t1.clientX + t2.clientX) / 2;
+      lastMidY = (t1.clientY + t2.clientY) / 2;
+    }
+  }, { passive: true });
+
+  area.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 1 && dragging && !pinching) {
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
+      tx = startTx + dx;
+      ty = startTy + dy;
+      clampTransform();
+      applyTransform();
+    } else if (e.touches.length === 2) {
+      pinching = true;
+      const t1 = e.touches[0], t2 = e.touches[1];
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const midX = (t1.clientX + t2.clientX) / 2;
+      const midY = (t1.clientY + t2.clientY) / 2;
+      const rect = area.getBoundingClientRect();
+
+      if (lastDist > 0) {
+        const factor = dist / lastDist;
+        zoomAt(midX - rect.left, midY - rect.top, factor);
+        // 也支援雙指平移
+        tx += midX - lastMidX;
+        ty += midY - lastMidY;
+        clampTransform();
+        applyTransform();
+      }
+      lastDist = dist;
+      lastMidX = midX;
+      lastMidY = midY;
+    }
+  }, { passive: false });
+
+  area.addEventListener('touchend', e => {
+    if (e.touches.length < 2) {
+      lastDist = 0;
+      pinching = false;
+    }
+    if (e.touches.length === 0) {
+      setTimeout(() => { dragging = false; moved = false; }, 50);
+    }
+  }, { passive: true });
 }
 
 function confetti() {
